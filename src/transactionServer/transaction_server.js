@@ -1,6 +1,8 @@
 import grpc from '@grpc/grpc-js';
 import protoLoader from '@grpc/proto-loader';
 import { v4 as uuidv4 } from 'uuid';
+import { PrismaClient } from './generated/prisma/index.js';
+const prisma = new PrismaClient();
 
 const PROTO_PATH = '../manager.proto';
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
@@ -42,7 +44,7 @@ async function requestTransaction(call, callback) {
         if(actual_balance < value){
             return callback(null, {
                 success: false, 
-                message: "Dont't have enought money",
+                message: "Don't have enought money",
                 balance: actual_balance
             });
         }
@@ -56,8 +58,11 @@ async function requestTransaction(call, callback) {
             description,
             date: new Date().toISOString()
         };
-        transactions.push(newTransaction);
-        console.log('New transaction completed', newTransaction);
+        // transactions.push(newTransaction);
+        const transaction = await prisma.transaction.create({
+            data: newTransaction
+        });
+        console.log('New transaction completed', transaction);
         callback(null, {
             success: true,
             message: 'successful transaction',
@@ -75,13 +80,16 @@ async function requestTransaction(call, callback) {
         }
         return callback(error);
     }
-}
+}   
 
-function consultTransactions(call){
+async function consultTransactions(call){
     const clientId = call.request.id;
-    const clientTransactions = transactions.filter(
-        t => t.client_id === clientId
-    );
+    // const clientTransactions = transactions.filter(
+    //     t => t.id === clientId
+    // );
+    const clientTransactions = await prisma.transaction.findMany({
+        where: { client_id: clientId }
+    });
 
     clientTransactions.forEach(transaction => {
         call.write(transaction);
