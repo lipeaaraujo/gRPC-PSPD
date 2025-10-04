@@ -23,7 +23,7 @@ function registerClient(call, callback) {
         id,
         name,
         credit_limit,
-        balance: 0
+        balance: 1000
     };
     clients.set(id, newClient);
     console.log('New client:', newClient);

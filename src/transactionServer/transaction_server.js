@@ -80,7 +80,7 @@ async function requestTransaction(call, callback) {
 function consultTransactions(call){
     const clientId = call.request.id;
     const clientTransactions = transactions.filter(
-        t => t.id === clientId
+        t => t.client_id === clientId
     );
 
     clientTransactions.forEach(transaction => {
