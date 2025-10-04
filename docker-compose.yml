@@ -1,0 +1,26 @@
+services:
+  db_client:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: 12345
+      POSTGRES_DB: db_grpc_client
+    volumes:
+      - db_client_data:/var/lib/postgresql/client_data
+
+  db_transaction:
+    image: postgres:latest
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: 12345
+      POSTGRES_DB: db_grpc_transaction
+    volumes:
+      - db_transaction_data:/var/lib/postgresql/transaction_data
+
+volumes:
+  db_client_data:
+  db_transaction_data:
