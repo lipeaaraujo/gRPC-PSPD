@@ -4,6 +4,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "start": "node transaction_server.js",
+    "db:deploy": "npx prisma migrate deploy && npx prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -14,6 +16,7 @@
     "@grpc/grpc-js": "^1.14.0",
     "@grpc/proto-loader": "^0.8.0",
     "@prisma/client": "^6.16.3",
+    "dotenv": "^17.2.3",
     "body-parser": "^2.2.0",
     "express": "^5.1.0",
     "prisma": "^6.16.3",

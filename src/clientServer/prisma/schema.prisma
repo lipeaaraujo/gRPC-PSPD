@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = "postgresql://user:12345@localhost:5432/db_grpc_client"
+  url      = env("CLIENT_DB_URL")
 }
 
 model User {

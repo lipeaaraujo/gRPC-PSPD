@@ -3,8 +3,11 @@ import protoLoader from '@grpc/proto-loader';
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaClient } from './generated/prisma/index.js';
 const prisma = new PrismaClient();
+import dotenv from 'dotenv';
 
-const PROTO_PATH = '../manager.proto';
+dotenv.config();
+
+const PROTO_PATH = './manager.proto';
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
     keepCase: true,
     longs: String,
@@ -56,17 +59,18 @@ async function consultClient(call, callback) {
 
 function main(){
     const server = new grpc.Server();
+    const serverPort = process.env.GRPC_CLIENT_PORT || '3000';
     server.addService(manager_proto.ClientService.service, {
         RegisterClient: registerClient,
         ConsultClient: consultClient
     });
-    server.bindAsync('0.0.0.0:50051', grpc.ServerCredentials.createInsecure(),(err, port) => {
+    server.bindAsync(`0.0.0.0:${serverPort}`, grpc.ServerCredentials.createInsecure(),(err, port) => {
         if(err) {
             console.error('Fail to initialize server:',err);
             return;
         }
             
-        console.log(`Client Serve Running on: ${port}`);
+        console.log(`Client Server Running on: ${port}`);
     });
 }
 

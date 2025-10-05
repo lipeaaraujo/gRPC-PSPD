@@ -11,7 +11,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = "postgresql://user:12345@localhost:5433/db_grpc_transaction"
+  url      = env("TRANSACTIONS_DB_URL")
 }
 
 model Transaction {
