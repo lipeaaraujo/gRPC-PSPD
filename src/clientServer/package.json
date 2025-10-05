@@ -14,6 +14,7 @@
     "@grpc/grpc-js": "^1.14.0",
     "@grpc/proto-loader": "^0.8.0",
     "@prisma/client": "^6.16.3",
+    "express": "^5.1.0",
     "prisma": "^6.16.3",
     "uuid": "^13.0.0"
   }

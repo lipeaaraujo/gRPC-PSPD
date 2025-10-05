@@ -1,4 +1,4 @@
-'''import grpc 
+import grpc 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
@@ -151,4 +151,3 @@ def get_extrato(client_id: str):
         if e.code() == grpc.StatusCode.NOT_FOUND:
             raise HTTPException(status_code=404, detail="Client not found")
         raise HTTPException(status_code=500, detail=f'Fail: {e.details()}')
-'''
