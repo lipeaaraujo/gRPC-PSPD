@@ -2,9 +2,13 @@ import grpc from '@grpc/grpc-js';
 import protoLoader from '@grpc/proto-loader';
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaClient } from './generated/prisma/index.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 const prisma = new PrismaClient();
 
-const PROTO_PATH = '../manager.proto';
+
+const PROTO_PATH = './manager.proto';
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
     keepCase: true,
     longs: String,
@@ -18,7 +22,7 @@ const manager_proto = grpc.loadPackageDefinition(packageDefinition).manager;
 const transactions = [];
 
 const clientServer = new manager_proto.ClientService(
-    'localhost:50051',
+    process.env.GRPC_CLIENT_URL || 'http://localhost:4000',
     grpc.credentials.createInsecure()
 );
 
@@ -100,12 +104,13 @@ async function consultTransactions(call){
 
 function main(){
     const server = new grpc.Server();
+    const serverPort = process.env.GRPC_TRANSACTIONS_PORT || 4001;
     server.addService(manager_proto.TransactionService.service,{
         RequestTransaction: requestTransaction,
         ConsultTransaction: consultTransactions
     });
 
-    server.bindAsync('0.0.0.0:50052', grpc.ServerCredentials.createInsecure(),(error, port) => {
+    server.bindAsync(`0.0.0.0:${serverPort}`, grpc.ServerCredentials.createInsecure(),(error, port) => {
         if(error){
             console.error('Fail to initialize server:',error);
             return;
