@@ -1,4 +1,4 @@
-import grpc from '@grpc/grpc-js';
+/* import grpc from '@grpc/grpc-js';
 import protoLoader from '@grpc/proto-loader';
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaClient } from './generated/prisma/index.js';
@@ -70,4 +70,4 @@ function main(){
     });
 }
 
-main();
+main(); */
