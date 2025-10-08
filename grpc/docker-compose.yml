@@ -25,6 +25,17 @@ services:
       - transactions_manager_grpc_network
     env_file:
       - ./.env
+  
+  grpc_web_server:
+    build:
+      context: .
+      dockerfile: ./webServer/Dockerfile
+    ports:
+      - "8080:8080"
+    networks:
+      - transactions_manager_grpc_network
+    env_file:
+      - ./.env
 
   grpc_db_client:
     image: postgres:latest

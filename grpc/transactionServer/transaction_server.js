@@ -19,8 +19,6 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 
 const manager_proto = grpc.loadPackageDefinition(packageDefinition).manager;
 
-const transactions = [];
-
 const clientServer = new manager_proto.ClientService(
     process.env.GRPC_CLIENT_URL || 'http://localhost:4000',
     grpc.credentials.createInsecure()

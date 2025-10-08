@@ -9,4 +9,4 @@ EXPOSE 4000
 
 COPY ./clientServer .
 
-CMD ["npm", "start"]
+CMD ["sh", "-c", "npm run db:deploy && npm start"]

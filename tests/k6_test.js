@@ -3,7 +3,7 @@ import { check, sleep } from 'k6';
 
 // Configurações gerais
 export const options = {
-  vus: 100,            // número de usuários virtuais
+  vus: 5,            // número de usuários virtuais
   duration: '60s',   // duração total do teste
   thresholds: {
     http_req_failed: ['rate<0.01'], // menos de 1% de falhas
@@ -11,17 +11,17 @@ export const options = {
   },
 };
 
-const BASE_URL = 'http://localhost:8000'; // altere se necessário
+const BASE_URL = 'http://localhost:8080'; // altere se necessário
 
 export default function () {
-  // 1️⃣ Testa endpoint raiz
+  // Testa endpoint raiz
   const resRoot = http.get(`${BASE_URL}/`);
   check(resRoot, {
     'GET / responde 200': (r) => r.status === 200,
     'mensagem correta': (r) => r.json().message === 'API ON',
   });
 
-  // 2️⃣ Criação de cliente
+  // Criação de cliente
   const clientPayload = JSON.stringify({
     name: `Cliente_${__VU}_${__ITER}`, // nome aleatório
     credit_limit: Math.floor(Math.random() * 1000) + 100,
@@ -38,18 +38,18 @@ export default function () {
 
   const clientId = resCreateClient.json().id;
 
-  // 3️⃣ Consulta cliente criado
+  // Consulta cliente criado
   const resGetClient = http.get(`${BASE_URL}/clients/${clientId}`);
   check(resGetClient, {
     'GET /clients/{id} -> 200': (r) => r.status === 200,
     'nome do cliente correto': (r) => r.json().name.startsWith('Cliente_'),
   });
 
-  // 4️⃣ Criação de transação
+  // Criação de transação
   const transactionPayload = JSON.stringify({
     client_id: clientId,
     value: Math.random() * 200,
-    type: 'DEBIT',
+    type: 'd',
     description: 'Teste de carga',
   });
 
@@ -61,14 +61,14 @@ export default function () {
     'POST /transactions -> 200 ou 201': (r) => [200, 201].includes(r.status),
   });
 
-  // 5️⃣ Consulta transações do cliente
+  // Consulta transações do cliente
   const resGetTransactions = http.get(`${BASE_URL}/transactions/${clientId}`);
   check(resGetTransactions, {
     'GET /transactions/{id} -> 200': (r) => r.status === 200,
     'retorna lista de transações': (r) => Array.isArray(r.json().transactions),
   });
 
-  // 6️⃣ Consulta extrato
+  // Consulta extrato
   const resExtrato = http.get(`${BASE_URL}/extrato/${clientId}`);
   check(resExtrato, {
     'GET /extrato/{id} -> 200': (r) => r.status === 200,

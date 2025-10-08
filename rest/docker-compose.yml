@@ -10,6 +10,9 @@ services:
         condition: service_healthy
     networks:
       - transactions_manager_rest_network
+    env_file:
+      - ./.env
+
   transaction_rest_server:
     build:
       context: .
@@ -21,6 +24,19 @@ services:
         condition: service_healthy
     networks:
       - transactions_manager_rest_network
+    env_file:
+      - ./.env
+
+  rest_web_server:
+    build:
+      context: .
+      dockerfile: ./webServer/Dockerfile
+    ports:
+      - "8080:8080"
+    networks:
+      - transactions_manager_rest_network
+    env_file:
+      - ./.env
 
   rest_db_client:
     image: postgres:latest
@@ -29,9 +45,9 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: 12345
-      POSTGRES_DB: db_client
+      POSTGRES_DB: db-client
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d db_client"]
+      test: ["CMD-SHELL", "pg_isready -U user -d db-client"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -47,9 +63,9 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: 12345
-      POSTGRES_DB: db_transaction
+      POSTGRES_DB: db-transaction
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d db_transaction"]
+      test: ["CMD-SHELL", "pg_isready -U user -d db-transaction"]
       interval: 5s
       timeout: 5s
       retries: 5

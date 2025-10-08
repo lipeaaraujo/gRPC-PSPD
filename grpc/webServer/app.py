@@ -1,11 +1,15 @@
 import grpc 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from dotenv import load_dotenv
+import os
 
 import manager_pb2
 import manager_pb2_grpc
 
 from google.protobuf.json_format import MessageToDict
+
+load_dotenv()
 
 class CreateClient(BaseModel):
     name: str
@@ -23,8 +27,12 @@ app = FastAPI(
     version= "1.0.0"
 )
 
-channel_server_client = grpc.insecure_channel('localhost:50051')
-channel_server_transaction = grpc.insecure_channel('localhost:50052')
+channel_server_client = grpc.insecure_channel(
+    os.getenv("GRPC_CLIENT_URL")
+)
+channel_server_transaction = grpc.insecure_channel(
+    os.getenv("GRPC_TRANSACTION_URL")
+)
 
 stub_client = manager_pb2_grpc.ClientServiceStub(channel_server_client)
 stub_transaction = manager_pb2_grpc.TransactionServiceStub(

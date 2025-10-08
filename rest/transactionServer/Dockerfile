@@ -9,4 +9,4 @@ EXPOSE 4001
 
 COPY ./transactionServer .
 
-CMD ["npm", "start"]
+CMD ["sh", "-c", "npm run db:deploy && npm start"]
