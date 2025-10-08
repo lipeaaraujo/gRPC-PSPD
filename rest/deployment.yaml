@@ -1,0 +1,133 @@
+# SERVICE: gRPC CLIENT
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client-rest-server
+  labels:
+    app: client-rest-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: client-rest-server
+      app: client-rest-server
+  template:
+    metadata:
+      labels:
+        name: client-rest-server
+        app: client-rest-server
+    spec:
+      containers:
+        - name: client-rest-server
+          image: lipeaaraujo/rest-client-server
+          ports:
+            - containerPort: 4000
+          env:
+            - name: CLIENT_DB_URL
+              value: "postgres://user:12345@db-client:5432/db_client"
+            - name: CLIENT_SERVICE_PORT
+              value: "4000"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: client-rest-server
+  labels:
+    app: client-rest-server
+spec:
+  selector:
+    app: client-rest-server
+  ports:
+    - name: client-rest-server
+      port: 4000
+      targetPort: 4000
+---
+# SERVICE: gRPC TRANSACTION
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transaction-rest-server
+  labels:
+    app: transaction-rest-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: transaction-rest-server
+      app: transaction-rest-server
+  template:
+    metadata:
+      labels:
+        name: transaction-rest-server
+        app: transaction-rest-server
+    spec:
+      containers:
+        - name: transaction-rest-server
+          image: lipeaaraujo/rest-transaction-server
+          ports:
+            - containerPort: 4001
+          env:
+            - name: TRANSACTION_DB_URL
+              value: "postgres://user:12345@db-transaction:5432/db_transaction"
+            - name: TRANSACTION_SERVICE_PORT
+              value: "4001"
+            - name: CLIENT_SERVICE_URL
+              value: "http://client-rest-server:4000"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transaction-rest-server
+  labels:
+    app: transaction-rest-server
+spec:
+  selector:
+    app: transaction-rest-server
+  ports:
+    - name: transaction-rest-server
+      port: 4001
+      targetPort: 4001
+---
+# SERVICE: WEB SERVER
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-rest-server
+  labels:
+    app: web-rest-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: web-rest-server
+      app: web-rest-server
+  template:
+    metadata:
+      labels:
+        name: web-rest-server
+        app: web-rest-server
+    spec:
+      containers:
+        - name: web-rest-server
+          image: lipeaaraujo/rest-web-server
+          ports:
+            - containerPort: 8080
+          env:
+            - name: TRANSACTION_SERVICE_URL
+              value: "http://transaction-rest-server:4001"
+            - name: CLIENT_SERVICE_URL
+              value: "http://client-rest-server:4000"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-rest-server
+  labels:
+    app: web-rest-server
+spec:
+  selector:
+    app: web-rest-server
+  ports:
+    - name: web-rest-server
+      port: 8080
+      targetPort: 8080
