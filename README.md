@@ -11,6 +11,8 @@ O sistema possui três serviços principais:
 
 ## Formas de Execução
 
+OBS: Para execução com Docker Compose importante copiar o arquivo `.env.example` para `.env` em cada versão (gRPC e REST).
+
 ### 1. gRPC com Docker Compose
 
 ```bash
