@@ -42,7 +42,16 @@ kubectl apply -f db-deployment.yaml
 
 # Deploy dos serviços
 kubectl apply -f deployment.yaml
+
+# Listar pods e serviços
+kubectl get pods
+kubectl get services
+
+# Redirecionar porta local para o Web Server
+kubectl port-forward service/web-grpc-server 8080:8080
 ```
+
+OpenAPI do Web Server gRPC: `http://localhost:8080/docs`
 
 ### 4. Kubernetes (REST)
 
@@ -54,7 +63,16 @@ kubectl apply -f db-deployment.yaml
 
 # Deploy dos serviços  
 kubectl apply -f deployment.yaml
+
+# Listar pods e serviços
+kubectl get pods
+kubectl get services
+
+# Redirecionar porta local para o Web Server
+kubectl port-forward service/web-rest-server 8080:8080
 ```
+
+OpenAPI do Web Server REST: `http://localhost:8080/docs`
 
 ## APIs Disponíveis (Web Server)
 
