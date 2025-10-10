@@ -2,6 +2,13 @@
 
 Sistema distribuído de transações financeiras implementado com gRPC e REST, usando Node.js e Python.
 
+## Clonar Repositório
+
+```bash
+git clone https://github.com/lipeaaraujo/gRPC-PSPD.git
+cd gRPC-PSPD
+```
+
 ## Arquitetura
 
 O sistema possui três serviços principais:
