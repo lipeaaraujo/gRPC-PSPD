@@ -111,6 +111,25 @@ Após adicionar o repositório, fazemos a instalação:
 ```bash
 helm upgrade --install metrics-server metrics-server/metrics-server
 ```
+Depois da instalação tivemos que lidar com um erro no deployment e no replicaset do metrics-server. Para corrigir, editamos diretamente o deployment pelo comando `kubectl -n default edit deployment metrics-server`. procurando a seguinte seção e adicionando as seguintes linhas:
+
+```yaml
+spec:
+    containers:
+    - args:
+      - --cert-dir=/tmp
+      - --secure-port=4443
+      - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+      - --kubelet-use-node-status-port
+      - --metric-resolution=15s
+      command: # linha nova
+      - /metrics-server # linha nova
+      - --kubelet-insecure-tls # linha nova
+      - --kubelet-preferred-address-types=InternalIP # linha nova
+```
+Após isso conseguimos visualizar as métricas no Kubernetes Dashboard corretamente.
+
+![kubernetes-dashboard-metrics](assets/kubernetes-dashboard-metrics.png)
 
 ## 4. Monitoramento e observabilidade
 

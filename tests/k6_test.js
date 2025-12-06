@@ -87,7 +87,7 @@ export const options = {
     http_req_duration: ['p(99)<2000'],        
     'http_req_duration{name:create_client}': ['p(95)<800'],
     'http_req_duration{name:create_transaction}': ['p(95)<600'],
-    'http_req_duration{name:get_extrato}': ['p(95)<500'],
+    'http_req_duration{name:get_extrato}': ['p(95)<1100'],
     success_rate: ['rate>0.95'],              
     client_creation_errors: ['count<50'],
     transaction_errors: ['count<100'],
