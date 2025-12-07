@@ -24,7 +24,6 @@ export const options = {
       startVUs: 0,
       stages: [
         { duration: '30s', target: 5 },  
-        { duration: '30s', target: 5 }, 
       ],
       gracefulRampDown: '10s',
       exec: 'warmupScenario',
@@ -33,7 +32,7 @@ export const options = {
 
     constant_load: {
       executor: 'constant-vus',
-      vus: 10,
+      vus: 500,
       duration: '2m',
       startTime: '1m', 
       exec: 'mainScenario',
@@ -45,8 +44,8 @@ export const options = {
       startTime: '3m',
       startVUs: 0,
       stages: [
-        { duration: '10s', target: 50 }, 
-        { duration: '30s', target: 50 },  
+        { duration: '10s', target: 1000 }, 
+        { duration: '30s', target: 2000 },  
         { duration: '10s', target: 0 },   
       ],
       gracefulRampDown: '5s',
@@ -59,10 +58,10 @@ export const options = {
       startTime: '4m',
       startVUs: 0,
       stages: [
-        { duration: '30s', target: 20 },
-        { duration: '30s', target: 40 },
-        { duration: '30s', target: 60 },
-        { duration: '30s', target: 80 },
+        { duration: '30s', target: 500 },
+        { duration: '30s', target: 1000 },
+        { duration: '30s', target: 1500 },
+        { duration: '30s', target: 2000 },
         { duration: '30s', target: 0 },
       ],
       gracefulRampDown: '10s',
@@ -74,8 +73,8 @@ export const options = {
       rate: 100, 
       timeUnit: '1s',
       duration: '1m',
-      preAllocatedVUs: 20,
-      maxVUs: 50,
+      preAllocatedVUs: 100,
+      maxVUs: 200,
       startTime: '6m30s',
       exec: 'readHeavyScenario',
     },
@@ -83,19 +82,19 @@ export const options = {
   
   thresholds: {
     http_req_failed: ['rate<0.05'],           
-    http_req_duration: ['p(95)<1000'],        
-    http_req_duration: ['p(99)<2000'],        
-    'http_req_duration{name:create_client}': ['p(95)<800'],
-    'http_req_duration{name:create_transaction}': ['p(95)<600'],
-    'http_req_duration{name:get_extrato}': ['p(95)<1100'],
+    http_req_duration: ['p(95)<3000'],        
+    http_req_duration: ['p(99)<4000'],        
+    'http_req_duration{name:create_client}': ['p(95)<3000'],
+    'http_req_duration{name:create_transaction}': ['p(95)<3000'],
+    'http_req_duration{name:get_extrato}': ['p(95)<3000'],
     success_rate: ['rate>0.95'],              
     client_creation_errors: ['count<50'],
-    transaction_errors: ['count<100'],
-    extrato_errors: ['count<50'],
+    transaction_errors: ['count<50'],
+    extrato_errors: ['count<100'],
   },
 };
 
-const BASE_URL = 'http://web-grpc-server:8080'    // para roda localmente tem que alterar para o 'http://localhost:8080'                    // para roda localmente tem que alterar para o 'http://localhost:8080'; 
+const BASE_URL = 'http://localhost:8080'    // para roda localmente tem que alterar para o 'http://localhost:8080'                    // para roda localmente tem que alterar para o 'http://localhost:8080'; 
 
 
 let clientPool = [];
