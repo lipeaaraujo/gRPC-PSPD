@@ -1,12 +1,9 @@
 # Monitoramento/observabilidade de aplicações em clusters K8S
 
-Disciplina: FGA0244 - Programação para Sistemas Paralelos e Distribuídos
-
-Turma: 02
-
-Data: 07/12/2025
-
-Semestre: 2025.2
+**Disciplina:** FGA0244 - Programação para Sistemas Paralelos e Distribuídos<br>
+**Turma:** 02<br>
+**Data:** 07/12/2025<br>
+**Semestre:** 2025.2
 
 ## Integrantes:
 
@@ -45,14 +42,42 @@ sobre os encontros realizados e o que ficou resolvido em cada encontro) -->
 
 > Observação: Deixamos todos os arquivos de configuração do Kubernetes na pasta `grpc/k8s/`. Portanto, todos os comandos de `kubectl apply -f <nome-do-arquivo>.yaml` devem ser executados a partir dessa pasta.
 
+### Configuração do Kind
+
 No trabalho anterior, utilizamos o Minikube para criação do cluster Kubernetes. Porém, para esse trabalho decidimos utilizar o Kind (Kubernetes IN Docker), que é uma ferramenta para rodar clusters Kubernetes locais usando contêineres Docker como nós do cluster. Decidimos utilizar o Kind por sua facilidade de configuração e leveza, especialmente para ambientes de desenvolvimento e testes locais.
 
-- Criamos um arquivo `config.yaml` para definir o master e os worker nodes do nosso cluster com o kind. Inicialmente definimos 1 master node e 2 worker nodes. Para rodar, executar o comando `kind create cluster --name grpc --config config.yaml`. Para conferir rodar o comando `kind get clusters`, deve aparecer o cluster "grpc". Pode-se conferir os pods pelo comando `kubectl get pods -n kube-system`, e os nós criados com o comando `kubectl get nodes`. 
-- Reutilizamos os arquivos .yaml criados no último trabalho (`db-deployment.yaml` e `deployment.yaml`) para instanciação do volumes, deployments e services correspondentes dos bancos de dados, dos serviços gRPC e da nossa Web API Gateway. Eles foram criados inicialmente em conjunto com o minikube, porém não tivemos problemas em utilizá-los com o kind. O comando para aplicar os deployments é `kubectl apply -f <nome-do-arquivo>.yaml`. E para conferir podemos usar o `kubectl get pods -owide`, que também mostra a distribuição nos worker nodes.
+Primeiro, instalamos o Kind seguindo as instruções oficiais do repositório do [Kind no GitHub](https://kind.sigs.k8s.io/docs/user/quick-start/). Depois criamos um arquivo de configuração `config.yaml` para definir o master e os worker nodes do nosso cluster:
+
+```yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker
+```
+Para criar o cluster, executamos o comando `kind create cluster --name app-transacoes-cluster --config config.yaml`.
+
+Com isso, criamos um cluster Kubernetes chamado `app-transacoes-cluster` com 1 master node e 2 worker nodes. Para verificar se o cluster foi criado corretamente, utilizamos o comando `kind get clusters`.
+
+Devemos ver o nome do cluster listado. Também podemos verificar os pods e nós criados com os comandos `kubectl get pods -n kube-system` e `kubectl get nodes`, respectivamente.
+
+Para a definição dos deployments e services, reutilizamos os arquivos `.yaml` criados no trabalho anterior (`db-deployment.yaml` e `deployment.yaml`) que definem os volumes, deployments e services correspondentes dos bancos de dados, dos serviços gRPC e da nossa Web API Gateway. Aplicamos os deployments com o comando `kubectl apply -f <nome-do-arquivo>.yaml`.
+
+E para conferir, usamos o comando `kubectl get pods -owide`, que também mostra a distribuição dos pods nos worker nodes, ou `kubectl get svc` que mostra os serviços criados. Ao executar devemos ver os seguintes pods em execução:
+
+```
+NAME                       READY   STATUS    RESTARTS   AGE
+db-client-xxxxxx           1/1     Running   0          2m3s
+db-transaction-xxxxxx      1/1     Running   0          2m3s
+client-grpc-server-xxxxxx  1/1     Running   0          2m3s
+transaction-grpc-server-xxxxxx 1/1     Running   0          2m3s
+web-grpc-server-xxxxxx     1/1     Running   0          2m3s
+```
 
 ### Interface de Monitoramento Web
 
-Para interface de monitoramento web, decidimos usar o Kubernetes Dashboard. Para fazer sua instalação, utilizamos o [Helm](https://helm.sh/docs/intro/install/) para adicionar o repositório do Kubernetes Dashboard:
+Para interface de monitoramento web, usamos o Kubernetes Dashboard. Para fazer sua instalação, utilizamos o [Helm](https://helm.sh/docs/intro/install/) para adicionar o repositório do Kubernetes Dashboard:
 
 ```bash
 helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard
@@ -105,6 +130,8 @@ Aplicando o recurso com `kubectl apply -f service-account.yml`. Podemos então g
 
 ### Setup do Metrics Server
 
+Após a instalação do Kubernetes Dashboard, percebemos que as métricas dos pods não estavam sendo exibidas corretamente. Isso ocorreu porque o Metrics Server, que é responsável por coletar e agregar métricas de recursos do cluster, não estava instalado.
+
 Para visualizarmos as métricas de cada pod no Kubernetes Dashboard também fizemos a instalação do Metrics Server por meio do Helm:
 
 ```bash
@@ -134,26 +161,32 @@ Após isso conseguimos visualizar as métricas no Kubernetes Dashboard corretame
 
 ![kubernetes-dashboard-metrics](assets/kubernetes-dashboard-metrics.png)
 
+No decorrer do trabalho, porém, acabamos não utilizando o Kubernetes Dashboard para monitoramento, optando por utilizar o Prometheus e os dashboards disponíveis no Grafana que nos forneceram as informações que nos forão necessárias para análise de desempenho da aplicação.
+
 ## 4. Monitoramento e observabilidade
 
-### Prometheus e Grafana
-Utilizamos o prometheus em conjunto com o grafana para fazer o monitoramento do cluster.
+### Setup do Prometheus e Grafana
+
+<!-- Utilizamos o prometheus em conjunto com o grafana para fazer o monitoramento do cluster. -->
+
+Para monitoramento das métricas do cluster e da aplicação, utilizamos o Prometheus em conjunto com o Grafana (uma ferramenta de criação de dashboards para visualização de métricas). Para facilitar a instalação, utilizamos o Helm para instalar o chart `kube-prometheus-stack`, que inclui tanto o Prometheus quanto o Grafana, além de outros componentes úteis para monitoramento em clusters Kubernetes.
+
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
 helm install prometheus prometheus-community/kube-prometheus-stack
 ```
-Após instalar o prometheus, devemos fazer um port forward para conseguirmos acessar o grafana. Utilizamos o seguinte comando:
+Após instalar o chart, devemos fazer port forwards para conseguirmos acessar o Prometheus e o Grafana:
+
 ```bash
+kubectl port-forward svc/prometheus-kube-prometheus-prometheus 9090:9090
 kubectl port-forward svc/prometheus-grafana 3000:80
 ```
-Para fazer login no grafana é necessário conseguir a senha de acesso, rodando o seguinte comando:
-```bash
-kubectl get secret --namespace default prometheus-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
-```
-O 'user' é admin.
+Para fazer login no grafana é necessário conseguir a senha de acesso, rodando o comando `kubectl get secret --namespace default prometheus-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo`. O user padrão é o admin.
 
-Após a instânciação do Prometheus e do Grafana, criamos um `ServiceMonitor` para o Prometheus coletar as métricas do web server. O arquivo `service-monitor.yaml` é o seguinte:
+Após a instânciação do Prometheus e do Grafana, tivemos que fazer modificações na aplicação original, especificamente no Web API Gateway, para expor métricas que pudessem ser coletadas pelo Prometheus. Para isso, utilizamos a biblioteca `prometheus-client` para Python, que nos permitiu criar um endpoint `/metrics` no web server que expõe as métricas no formato esperado pelo Prometheus.
+
+Após isso instanciamos um `ServiceMonitor` para o Prometheus coletar as métricas específicamente do web server. O arquivo `service-monitor.yaml` é o seguinte:
 
 ```yaml
 apiVersion: monitoring.coreos.com/v1
@@ -172,10 +205,93 @@ spec:
 ```
 Aplicamos o arquivo com o comando `kubectl apply -f service-monitor.yaml`.
 
-## 5. Aplicação
+Após todo o setup, conseguimos ter então o Prometheus coletando as métricas do cluster e do web server, e o Grafana exibindo essas métricas em dashboards customizados.
 
-- Criamos endpoint para métricas usando bibliotecas do Prometheus no web server, e com isso tivemos que atualizar a imagem docker do web server e subir para o Docker Hub.
-- Criamos ServiceMonitor para o Prometheus coletar as métricas do web server
+Em relação aos dashboards do Grafana, utilizamos um dashboard pré-existente para monitoramento de clusters Kubernetes, disponível no [Grafana Labs](https://grafana.com/grafana/dashboards/15661-k8s-dashboard-en-20250125/) ou no arquivo JSON exportado `dashboard-cluster.json`. Esse dashboard nos forneceu uma visão abrangente do desempenho do cluster e dos pods, incluindo métricas como uso de CPU, memória, rede e armazenamento.
+
+Para o monitoramento específico da aplicação, criamos um dashboard customizado no Grafana `dashboard-k6.json`, focado nas métricas expostas pelo web server, como requisições por segundo, latência e taxa de erros. Com esses dashboards, conseguimos monitorar o desempenho da aplicação em tempo real durante os testes de carga.
+
+## 5. Aplicação de transações financeiras
+
+A aplicação consiste em um sistema de gerenciamento de transações financeiras, utilizando uma arquitetura de microsserviços que se comunicam via gRPC. A base desta comunicação é definida no arquivo de contrato .proto, que estabelece os serviços e as mensagens trocadas entre eles:
+
+```proto
+syntax = "proto3";
+package manager;
+
+service ClientService{
+    rpc RegisterClient (RegisterClientRequest) returns (Client);
+    rpc ConsultClient (ConsultClientRequest) returns (Client);
+}
+
+message Client {
+    string id = 1;
+    string name = 2;
+    string credit_limit = 3;
+    double balance = 4;
+}
+
+message RegisterClientRequest {
+    string name= 1;
+    double credit_limit= 2;
+}
+
+message ConsultClientRequest {
+    string id = 1;
+}
+
+// -------------------------------------------------------
+
+service TransactionService {
+    rpc RequestTransaction (PerformTransaction) returns (TransactionResponse);
+    rpc ConsultTransaction (ConsultClientRequest) returns (stream Transaction);
+}
+
+message PerformTransaction {
+    string client_id = 1;
+    double value = 2;
+    string type = 3;
+    string description = 4;
+}
+
+message TransactionResponse {
+    bool success = 1;
+    string message = 2;
+    double balance = 3;
+}
+
+message Transaction {
+    string id = 1;
+    string client_id = 2;
+    double value = 3;
+    string type = 4;
+    string description = 5;
+    string date = 6;
+}
+```
+
+No núcleo do sistema, o **Serviço de Cliente (ClientService)** é o 
+responsável por toda a gestão dos dados dos clientes, incluindo seus limites de crédito e saldos. Ele expõe, através de gRPC, as operações para registrar um novo cliente e consultar os dados de um cliente existente.
+
+Em paralelo, o **Serviço de Transação (TransactionService)** lida com a lógica financeira, processando as transações de crédito e débito. Este serviço oferece uma função para solicitar novas transações, outra para consultar o histórico de transações de um cliente, que retorna os resultados em modo stream para maior eficiência e uma terceira função para obter o extrato consolidado do cliente. Essa última operação também se comunica com o Serviço de Cliente diretamente para obter informações atualizadas do cliente.
+
+Para interagir com o mundo exterior, uma **API Gateway** desenvolvida em Python com FastAPI atua como a fachada HTTP do sistema. Ela traduz as requisições web para chamadas gRPC internas. Para o gerenciamento de clientes, a API expõe os endpoints POST e GET Para as operações financeiras. Os endpoints desse serviço são:
+- `POST /clients`: Cria um novo cliente.
+- `GET /clients/{client_id}`: Recupera os dados de um cliente específico.
+- `POST /transactions`: Registra uma nova transação (crédito ou débito).
+- `GET /transactions/{client_id}`: Retorna o histórico de transações de um cliente em modo stream.
+- `GET /extrato/{client_id}`: Fornece o extrato consolidado do cliente.
+
+### Modificações para Monitoramento
+
+<!-- - Criamos endpoint para métricas usando bibliotecas do Prometheus no web server, e com isso tivemos que atualizar a imagem docker do web server e subir para o Docker Hub.
+- Criamos ServiceMonitor para o Prometheus coletar as métricas do web server -->
+
+Para integrar o monitoramento via Prometheus, fizemos algumas modificações na API Gateway. Implementamos um endpoint `/metrics` utilizando a biblioteca `prometheus-client` para Python, que expõe métricas como contagem de requisições, latência e taxa de erros. Para isso também atualizamos a imagem Docker do web server e a subimos para o Docker Hub.
+
+![endpoint-metrics](assets/endpoint-metrics.png)
+
+Após isso, criamos um `ServiceMonitor` no Kubernetes para que o Prometheus pudesse coletar essas métricas do web server conforme descrito na seção de monitoramento.
 
 ## 6. Testes feitos
 
@@ -189,6 +305,21 @@ os resultados
 as conclusões -->
 
 <!-- Além das alternativas de variação da associação da aplicação em contêiners, é possível alterar (i) a quantidade de instâncias de cada módulo da aplicação, (ii) a quantidade de contêineres nos worker nodes, (iii) o número de worker nodes disponibilizados no cluster, (iv) a variação da carga de trabalho submetida, entre outros. A escolha deve ser feita de modo a garantir osrequisitos de monitoramento e observabilidade da aplicação. -->
+
+### Ferramental de Teste
+
+Para os testes de carga, utilizamos a ferramenta [K6](https://k6.io/), que é uma ferramenta de código aberto para testes de carga e desempenho. Ela permite simular múltiplos usuários virtuais (VUs) realizando requisições à aplicação, possibilitando a avaliação do desempenho sob diferentes cargas de trabalho.
+
+Com ela criamos um script de teste em JavaScript (`k6_test.js`) que simula uma série de operações típicas realizadas pelos usuários da aplicação, incluindo o registro de clientes, a realização de transações e a consulta de extratos. O script também coleta métricas importantes como tempo de resposta, taxa de erros e throughput.
+
+No script definimos 5 fluxos de testes diferentes, cada um com diferentes níveis de carga (número de usuários virtuais e duração do teste), tivemos que realizar vários testes para definir os valores ideais para cada fluxo de forma que fossem representativos do comportamento da aplicação sob diferentes condições de carga e que pudessem retratar os limites da aplicação. Os fluxos definidos foram:
+- Fluxo 1: warm-up (5 VUs por 60 segundos) acionando apenas o endpoint base do web server.
+- Fluxo 2: carga leve (10 VUs por 120 segundos) realizando operações de registro e consulta de clientes.
+- Fluxo 3: picos de demanda (50 VUs por 10 segundos depois 30 segundos em 100 VUs e 10 segundos em 0 VUs) simulando picos de demanda.
+- Fluxo 4: estresse (aumento gradativo de 20 a 80 VUs por 300 segundos) para identificar os limites da aplicação.
+- Fluxo 5: carga de leitura intensiva (20 VUs pré-alocadas e 50 VUs máximas por 60 segundos) focando em consultas de extrato.
+
+### Definição da configuração base
 
 ### 6.1 Cenários de testes
 
