@@ -132,7 +132,7 @@ metadata:
     kubernetes.io/service-account.name: "admin-user"   
 type: kubernetes.io/service-account-token  
 ```
-Aplicando o recurso com `kubectl apply -f service-account.yml`. Podemos então gerar o token para acessar o Kubernetes Dashboard, com o comando `kubectl get secret admin-user -n kubernetes-dashboard -o jsonpath="{.data.token}" | base64 -d`.
+Primeiro aplicamos o comando `kubectl apply -f service-account.yml`, podemos então gerar o token para acessar o Kubernetes Dashboard, com o comando `kubectl get secret admin-user -n kubernetes-dashboard -o jsonpath="{.data.token}" | base64 -d`.
 
 ### Setup do Metrics Server
 
@@ -340,13 +340,22 @@ Este cenário estabelece o desempenho inicial da aplicação na configuração m
 1. O **tempo médio de resposta** por requisição;  
 2. A **quantidade máxima de requisições processadas por segundo** . 
 
-Após a execução dos testes, coletamos os seguintes resultados de utilização de CPU:
+Após a execução dos testes, coletamos os seguintes resultados de utilização de CPU pelo Grafana:
 
 ![grafico-pods-cpu](assets/base-case-cpu.png)
 
-Os seguintes resultados de tempo de resposta e throughput:
+Os seguintes resultados de tempo de resposta e throughput também pelo Grafana:
 
 ![grafico-base-case](assets/base-case-requests.png)
+
+E com os resultados retornados pelo k6 montamos a seguinte tabela resumo:
+
+| Métrica | Valor |
+|---------|-------|
+| Erros de criação de cliente | 2970 |
+| Erros de extrato | 471 |
+| Erros de transação | 475 |
+| Tempo médio de resposta (ms) | **3.08s** |
 
 ### Cenários de Variação (Otimização e Elasticidade)
 
@@ -400,18 +409,6 @@ Estes cenários focam em comparar resultados variando as características do clu
 * **Testes 2.1** - O objetivo desse cenário de testes era estressar a aplicação para descobrir os limites que permitiriam que obtivessemos o melhor proveito nos cenários restantes. Identificamos que 500 VU eram bons para iniciar os cenarios de teste, e que uma progressão gradual em direção a 1000 usuário era o suficiente para colocar o sistema sob estresse. Um dos principais pontos de dificuldade identificado foi o webSere, que consumiu todo o espaço de CPU destinado a ele na configuração básica.
 
 ![imagem grafica](assets/grafico-21.png) 
-
-
-### Métricas Gerais
-
-| Indicador | Valor |
-|------------|--------|
-| Tempo médio de resposta (avg) | **144,43 ms** |
-| Mediana (P50) | 78,07 ms |
-| Throughput máximo | **124,03 req/s** |
-| Taxa de sucesso | 99,6% |
-| Duração total dos testes | 7min 30s |
-
 
 ### Análise
 
