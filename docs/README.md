@@ -24,9 +24,6 @@ A aplicação escolhida foi o sistema distribuído de transações financeiras i
 Este documento está organizado de forma a detalhar a descrever a experiência técnica de montagem da infraestrutura e apresentar os resultados obtidos nos testes comparativos e posteriormente descrever as conclusões obtidas a partir do experimento.
 
 ## 2. Metodologia
-
-<!-- A metodologia utilizada (como cada grupo se organizou para realizar a atividade, incluindo um roteiro
-sobre os encontros realizados e o que ficou resolvido em cada encontro) -->
     
 ### Encontros
 
@@ -37,6 +34,7 @@ sobre os encontros realizados e o que ficou resolvido em cada encontro) -->
 | 03/12 | Criação do cluster kubernetes, utilizando o kind; configuração do Kubernets Dashboard, interface para monitoramento web das métricas; estudo e instalação do Prometheus e Grafana |
 | 05/12 | Implementação das métricas na API; criação dos scripts de testes de carga; criação dos cenários |
 | 06/12 | Conexão da aplicação com o Prometheus para coletar as métricas; realização dos testes |
+| 07/12 | Documentação dos resultados obtidos |
 
 
 ## 3. Montagem do cluster Kubernetes
@@ -217,6 +215,8 @@ Em relação aos dashboards do Grafana, utilizamos um dashboard pré-existente p
 
 Para o monitoramento específico da aplicação, criamos um dashboard customizado no Grafana `dashboard-k6.json`, focado nas métricas expostas pelo web server, como requisições por segundo, latência e taxa de erros. Com esses dashboards, conseguimos monitorar o desempenho da aplicação em tempo real durante os testes de carga.
 
+Os dashboard podem ser importados no Grafana através da opção de importação, colando o conteúdo do arquivo JSON ou utilizando o ID do dashboard disponível no Grafana Labs.
+
 ## 5. Aplicação de transações financeiras
 
 A aplicação consiste em um sistema de gerenciamento de transações financeiras, utilizando uma arquitetura de microsserviços que se comunicam via gRPC. A base desta comunicação é definida no arquivo de contrato .proto, que estabelece os serviços e as mensagens trocadas entre eles:
@@ -295,37 +295,24 @@ Para interagir com o mundo exterior, uma **API Gateway** desenvolvida em Python 
 
 Para integrar o monitoramento via Prometheus, fizemos algumas modificações na API Gateway. Implementamos um endpoint `/metrics` utilizando a biblioteca `prometheus-client` para Python, que expõe métricas como contagem de requisições, latência e taxa de erros. Para isso também atualizamos a imagem Docker do web server e a subimos para o Docker Hub.
 
-![endpoint-metrics](assets/endpoint-metrics.png)
-
 Após isso, criamos um `ServiceMonitor` no Kubernetes para que o Prometheus pudesse coletar essas métricas do web server conforme descrito na seção de monitoramento.
 
 ## 6. Testes feitos
-
-<!-- Em qualquer cenário de teste, é importante:
-- Documentar os atributos/métricas que serão testados
-- Uso do Prometheus para monitorar/observar a aplicação e o ambiente testado
-- Uso de ferramental de teste para submissão da aplicação a diferentes cargas de trabalho (demandas)
-- Garantir as mesmas condições de teste de infraestrutura para os testes de modo a não contaminar
-os resultados
-- Para cada cenário montado, fazer teste de carga, observar o comportamento da aplicação e anotar
-as conclusões -->
-
-<!-- Além das alternativas de variação da associação da aplicação em contêiners, é possível alterar (i) a quantidade de instâncias de cada módulo da aplicação, (ii) a quantidade de contêineres nos worker nodes, (iii) o número de worker nodes disponibilizados no cluster, (iv) a variação da carga de trabalho submetida, entre outros. A escolha deve ser feita de modo a garantir osrequisitos de monitoramento e observabilidade da aplicação. -->
 
 ### Ferramental de Teste
 
 Para os testes de carga, utilizamos a ferramenta [K6](https://k6.io/), que é uma ferramenta de código aberto para testes de carga e desempenho. Ela permite simular múltiplos usuários virtuais (VUs) realizando requisições à aplicação, possibilitando a avaliação do desempenho sob diferentes cargas de trabalho.
 
-> Observação: O guia para instalação e configuração da ferramenta está no arquivo ![Guia para Executar Testes com K6](tests/README.md).
+> Observação: O guia para instalação e configuração da ferramenta está no arquivo [Guia para Executar Testes com K6](gRPC-PSPD/tests/README.md).
 
 Com ela criamos um script de teste em JavaScript (`k6_test.js`) que simula uma série de operações típicas realizadas pelos usuários da aplicação, incluindo o registro de clientes, a realização de transações e a consulta de extratos. O script também coleta métricas importantes como tempo de resposta, taxa de erros e throughput.
 
 No script definimos 5 fluxos de testes diferentes, cada um com diferentes níveis de carga (número de usuários virtuais e duração do teste), tivemos que realizar vários testes para definir os valores ideais para cada fluxo de forma que fossem representativos do comportamento da aplicação sob diferentes condições de carga e que pudessem retratar os limites da aplicação. Os fluxos definidos foram:
-- Fluxo 1: warm-up (5 VUs por 60 segundos) acionando apenas o endpoint base do web server.
-- Fluxo 2: carga leve (10 VUs por 120 segundos) realizando operações de registro e consulta de clientes.
-- Fluxo 3: picos de demanda (50 VUs por 10 segundos depois 30 segundos em 100 VUs e 10 segundos em 0 VUs) simulando picos de demanda.
-- Fluxo 4: estresse (aumento gradativo de 20 a 80 VUs por 300 segundos) para identificar os limites da aplicação.
-- Fluxo 5: carga de leitura intensiva (20 VUs pré-alocadas e 50 VUs máximas por 60 segundos) focando em consultas de extrato.
+- Fluxo 1: warm-up (10 VUs por 15 segundos) acionando apenas o endpoint base do web server.
+- Fluxo 2: carga leve (100 VUs por 60 segundos) realizando operações de registro e consulta de clientes.
+- Fluxo 3: picos de demanda (100 VUs por 15 segundos depois 30 segundos em 500 VUs e 30 segundos em 100 VUs) simulando picos de demanda.
+- Fluxo 4: estresse (aumento gradativo de 300 a 500 VUs por 30 segundos) para identificar os limites da aplicação.
+- Fluxo 5: carga de leitura intensiva (50 VUs pré-alocadas e 100 VUs máximas por 60 segundos) focando em consultas de extrato e operações de leitura.
 
 ### Configuração base
 
@@ -352,27 +339,23 @@ E com os resultados retornados pelo k6 montamos a seguinte tabela resumo:
 
 | Métrica | Valor |
 |---------|-------|
+| Total de requisições | 17822 |
 | Erros de criação de cliente | 2970 |
 | Erros de extrato | 471 |
 | Erros de transação | 475 |
 | Tempo médio de resposta (ms) | **3.08s** |
+| Média de requisições por segundo | **59.13 req/s** |
+| Máximo de requisições por segundo | **169 req/s** |
 
-### Cenários de Variação (Otimização e Elasticidade)
+Portanto, com isso podemos concluir que o cenário base apresenta uma taxa significativa de erros, especialmente nas operações de criação. Isso muito provavelmente causado por limitações de recursos do pod do web server, que atingiu 100% de uso de CPU durante os testes. O tempo médio de resposta também é relativamente alto, indicando que a aplicação está lutando para lidar com a carga de trabalho.
+
+Pelo gráfico de CPU, podemos ver que o pod do web server é o mais sobrecarregado, seguido banco de dados de transações. Isso sugere que o web server é o gargalo principal na configuração atual, e que os bancos de dados também podem virar pontos de estrangulamento sob carga.
+
+### Cenários de Variação
 
 Estes cenários focam em comparar resultados variando as características do cluster K8S e da aplicação para otimizar desempenho e elasticidade.
 
-#### Cenário 2.1: Teste de Limite de Estresse (*Stress Test*)
-
-**Objetivo:** Simular uma grande quantidade de requisições para "estressar" a aplicação e identificar seus limites antes de falhas ou degradação do serviço.
-
-* **Variação:** Aumento progressivo e significativo da carga de trabalho submetida.
-* **Carga:** Iniciar com uma carga alta (Ex: 50 VUs) e aumentar gradativamente (Ex: 100 VUs, 200 VUs) até a aplicação atingir uma taxa de erro (>5%) ou latência inaceitável.
-* **Foco:**
-    * Identificar o gargalo (qual módulo P, A ou B atinge 100% de CPU/Memória).
-    * Correlacionar métricas de *throughput* e latência com o uso de recursos do *Pod* (via Prometheus).
-* **Métricas:** Tempo de resposta (avg e p95), Taxa de Erros, Uso de CPU/Memória do *Pod* crítico.
-
-#### Cenário 2.2: Otimização por Paralelização (Aumento de Réplicas)
+<!-- #### Otimização por Paralelização (Aumento de Réplicas)
 
 **Objetivo:** Verificar como o escalonamento horizontal (aumento de instâncias) de um microsserviço impacta o desempenho sob carga elevada.
 
@@ -381,59 +364,59 @@ Estes cenários focam em comparar resultados variando as características do clu
     * **Exemplo 2:** Aumentar o `Deployment` do `WEB API` (P) para 3 réplicas.
 * **Carga:** Aplicar a carga de estresse do Cenário 2.1 (ou uma carga constante alta) em cada variação.
 * **Foco:** Comparar o *throughput* e a latência com o Cenário 2.1 e Cenário Base. Identificar a configuração que oferece o melhor desempenho.
-* **Métricas:** As mesmas do Cenário 2.1, observando a distribuição da carga entre os novos *Pods* criados.
+* **Métricas:** As mesmas do Cenário 2.1, observando a distribuição da carga entre os novos *Pods* criados. -->
 
-#### Cenário 2.3: Elasticidade com Horizontal Pod Autoscaler (HPA)
+#### Elasticidade com Horizontal Pod Autoscaler (HPA)
 
-**Objetivo:** Demonstrar e avaliar a capacidade de *autoscaling* do Kubernetes para se adaptar automaticamente a picos de demanda.
+O objetivo deste cenário era avaliar a capacidade de autoscaling do Kubernetes, testando como o HPA responde automaticamente a variações de carga através do escalonamento horizontal de pods. Configuramos o HPA para monitorar a utilização de CPU dos serviços web-grpc-server e transaction-grpc-server, com threshold de 50% e limites de 1 a 5 réplicas.
 
-* **Variação:** Ativar o **Horizontal Pod Autoscaler (HPA)** no `Deployment` do módulo que mais se beneficiou do escalonamento (provavelmente P ou B).
-    * **Configuração HPA:** Definir um alvo de utilização de CPU (ex: 50%) e limites mínimo/máximo de réplicas (ex: min 1, max 5).
-* **Carga:** Aplicar uma carga de trabalho variável (picos e vales) para forçar o HPA a *escalar* (adicionar *Pods*) e *diminuir* (remover *Pods*).
-* **Foco:**
-    * Medir o tempo de resposta durante os eventos de *scaling*.
-    * Observar a criação e remoção dos *Pods* em tempo real (via Prometheus/Grafana).
-* **Métricas:** Latência, *throughput*, e contagem de réplicas do *Deployment* afetado ao longo do tempo.
+Para este teste, utilizamos o mesmo script K6 com os 5 cenários de carga progressiva: warmup (10 VUs), carga constante (100 VUs), pico de demanda (500 VUs), teste de estresse (300-500 VUs) e leitura intensiva (100 iterations/s), totalizando aproximadamente 5 minutos de teste contínuo.
 
-#### Cenário 2.4: Distribuição de Carga entre Worker Nodes
+![grafico-hpa-cpu](assets/horizontal-cpu.png)
 
-**Objetivo:** Observar o impacto da distribuição física dos *Pods* entre os Worker Nodes na performance sob carga, testando a capacidade total do cluster.
+**Análise**
+- **Resposta Automática:** O HPA detectou corretamente o aumento de carga, escalando de 1 para 5 réplicas quando o uso de CPU ultrapassou 206% do limite configurado (web-grpc-server) e 155% (transaction-grpc-server).
+- **Tempo de Escalonamento:** O processo de scaling ocorreu de forma gradual: 1→2 réplicas em ~30s (68% CPU), 2→5 réplicas durante o spike test (CPU >200%), mantendo 5 réplicas no stress test.
+- **Distribuição de Carga:** Com 5 réplicas ativas, o pico de 850 req/s foi distribuído uniformemente (~170 req/s por pod), reduzindo a latência p95 de 3.2s (1 réplica) para 0.9s (5 réplicas).
+- **Elasticidade Efetiva:** Após o término da carga elevada, o HPA iniciou o scale-down automaticamente (5→3 réplicas), demonstrando capacidade bidirecional do autoscaling.
 
-* **Variação:** Aplicar uma carga de estresse (Cenário 2.1) sob duas configurações de Worker Node:
-    * **Configuração 1 (Cluster Mínimo):** Rodar o teste com 2 WNs.
-    * **Configuração 2 (Maior Capacidade - Opcional):** Aumentar o número de WNs e repetir o teste para avaliar o limite de *throughput*.
-* **Carga:** Carga de estresse (Cenário 2.1).
-* **Foco:** Latência e *throughput* em função da capacidade total de processamento do cluster K8S.
+#### Distribuição de Carga entre Worker Nodes
 
-### 6.2 Relatos dos testes
-* **Testes 2.1** - O objetivo desse cenário de testes era estressar a aplicação para descobrir os limites que permitiriam que obtivessemos o melhor proveito nos cenários restantes. Identificamos que 500 VU eram bons para iniciar os cenarios de teste, e que uma progressão gradual em direção a 1000 usuário era o suficiente para colocar o sistema sob estresse. Um dos principais pontos de dificuldade identificado foi o webSere, que consumiu todo o espaço de CPU destinado a ele na configuração básica.
+O objetivo deste cenário é avaliar como a distribuição física dos *Pods* entre os Worker Nodes afeta o desempenho da aplicação sob carga. Testamos duas configurações diferentes de Worker Nodes (WNs) para observar o impacto na latência e no *throughput*.
 
-![imagem grafica](assets/grafico-21.png) 
+A primeira configuração utiliza o cluster base com 2 WNs com 3 réplicas do web server e 1 réplica dos outros serviços de cliente e transação. Os resultados obtidos após a execução dos testes foram os seguintes:
 
-### Análise
+![grafico-cpu-nodes](assets/nodes-test-cpu.png)
+![grafico-requests-nodes](assets/nodes-test-requests.png)
 
-- **Desempenho Estável:** O sistema mantém latências baixas e throughput consistente até ~20 VUs.  
-- **Endpoint de Extrato:** Apresenta maior custo computacional devido à agregação de dados e múltiplas consultas.  
-- **Resiliência:** Nenhum crash durante o stress test, apenas aumento nas respostas acima de 6 segundos em picos.  
-- **Limitação Natural:** A ausência de réplicas limita a escalabilidade e gera contenção no banco em cenários de pico.
-   
+Com as métricas dos gráficos acima, podemos observar que a utilização de CPU nos pods do web server é menor em comparação com o cenário base. Isso indica que a distribuição dos pods entre os dois worker nodes ajudou a aliviar a carga em cada nó individualmente. Porém é possível observar grandes picos de utilização de CPU no pod do banco de dados de transações, o que sugere que esse serviço ainda é um ponto de estrangulamento sob carga. O que provavelmente elevou a latência média das requisições nos gráficos de requests.
+
+O segundo teste foi realizado aumentando o número de worker nodes para 4 WNs, e aumentando o número de réplicas dos serviços de transação e cliente para 2 réplicas cada, mantendo 3 réplicas do web server. Os resultados obtidos foram os seguintes:
+
+![grafico-cpu-nodes-4wn](assets/nodes-4wn-test-cpu.png)
+![grafico-requests-nodes-4wn](assets/nodes-4wn-test-requests.png)
+
+Com as métricas dos gráficos acima, podemos observar que curiosamente a utilização de CPU nos pods dos bancos de dados (client e transaction) diminuiram significativamente em comparação com o teste anterior, o que parece ter contribuído para uma redução na utilização de CPU nos serviços de transação e cliente e também um aumento no número de requisiçoes atendidas por segundo. Isso sugere que a adição de mais worker nodes permitiu uma melhor distribuição da carga de trabalho, aliviando a pressão sobre os serviços de banco de dados.
+
+No entanto, a carga de CPU nos pods do web server voltou a aumentar, o que gerou uma maior taxa de erros por timeout na aplicação. Isso indica que, apesar da melhoria na distribuição da carga, o web server ainda é um ponto de estrangulamento sob carga pesada, e o aumento das réplicas dos outros serviços precisa ser acompanhado por um aumento correspondente nas réplicas do web server para evitar sobrecarga.
 
 ## 7. Conclusão
 
-<!-- Conclusão – texto conclusivo em função da experiência realizada, comentários sobre dificuldades e soluções encontradas. Ao final, cada membro do grupo abre uma subseção para comentários pessoais sobre a pesquisa, indicando as partes que mais trabalhou, aprendizados e uma nota de autoavaliação. -->
-### 
-### Dificuldades
-* Uma das maiores dificuldades encontradas foi a formatação de Dashboards adequadas as informações que desejávemos extrair. Encontramos diversos problemas, como o acumulo do valor de váriaveis e dissincronização da monitoração do web-Server. A pouca documentação oficial tornou díficil encontrar informações que nos auxiliassem no desenvolvimento do sistema.
+O desenvolvimento deste projeto foi uma excelente oportunidade de colocar em prática conceitos de programação para sistemas distribuidos e monitoramento de microsserviços.O Prometheus e Grafana se provaram ferramentas eficientes e boas para o monitoramento dos serviços. Eles possibilitam uma análise temporal e granular do estados dos recursos do sistema.
+
+Uma das maiores dificuldades encontradas foi a formatação de Dashboards adequadas as informações que desejávemos extrair. Encontramos diversos problemas, como o acumulo do valor de váriaveis e dissincronização da monitoração do web-Server. A pouca documentação oficial tornou díficil encontrar informações que nos auxiliassem no desenvolvimento do sistema.Além disso, estabeler métricas customizadas no Prometheus foi desafiador, o que acabou ocupando muito do nosso tempo, já que era essencial para estabelecer o monitoramente do nosso Web Server e assim dar continuidade ao desenvolvimento do projeto.
+
+Conseguimos encontrar soluções para os problemas que apareceram graças a disponibilidade de tutorias no youtube que se mostraram de grande ajuda ao longo do desenvolvimento da aplicação. As analises que fizemos acabaram por revelar pontos de fragilidade, como a sobrecarga do Web Server em situações de estresse, o que é essencial para que se possa aprimorar e tornar o sistema mais eficiente e satisfátorio.
 
 ### Tabela de Contribuição
 
-| Matrícula | Nome | Contribuições | Autoavaliação (0-10) |
-|-----------|------|---------------|-----------------------|
-| 221022275 | Felipe Amorim de Araújo |  |  |
-| 221022041 | Julio Roberto da Silva Neto |  |  |
-| 221022570 | Gabryel Nicolas Soares de Sousa | |  |   
-| 221008679 | Pablo Serra Carvalho |  |  |
-| 211062437 | Raquel Ferreira Andrade |  |  |
+| Matrícula | Nome                            | Contribuições                                                                                                                                                                             | Autoavaliação (0-10) |     |
+| --------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | --- |
+| 221022275 | Felipe Amorim de Araújo         | Contribui para a configuração do cluster, definição da configuração base e execução e documentação dos resultados dos testes de cargas com configurações de paralelismo                   | 10                   |     |
+| 221022041 | Julio Roberto da Silva Neto     | Trabalhei na configuração das ferramentas de métricas como Prometheus e Grafana, definição, execução e documentação dos cenários de variação de carga                                     | 10                   |     |
+| 221022570 | Gabryel Nicolas Soares de Sousa | Contribui com a definição do testes realizados, criação de todos os cenários dos testes, participação na configuração base, execução e documentação dos resultados dos testes realizados. | 10                   |     |
+| 221008679 | Pablo Serra Carvalho            | Criação do script para testes de carga, definição do cenário e configurações base e execução inicial dos testes de carga                                                                  | 10                   |     |
+| 211062437 | Raquel Ferreira Andrade         | Contribui para a configuração do cluster, das ferramentas de métricas como Prometheus e Grafana, participação na configuração base e na documentação                                      | 10                   |     |
 
 ## 8. Referências
 
@@ -446,6 +429,4 @@ Estes cenários focam em comparar resultados variando as características do clu
 - https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/
 - https://github.com/kubernetes-sigs/metrics-server?tab=readme-ov-file
 - https://www.youtube.com/watch?v=-k0VrvWaaOg
-
-## Anexos
 
