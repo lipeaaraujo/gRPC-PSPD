@@ -203,7 +203,7 @@ spec:
   - port: metrics
     interval: 15s
 ```
-Aplicamos o arquivo com o comando `kubectl apply -f service-monitor.yaml`.
+Aplicamos o arquivo com o comando `kubectl apply -f webserver-monitor.yaml`.
 
 Após todo o setup, conseguimos ter então o Prometheus coletando as métricas do cluster e do web server, e o Grafana exibindo essas métricas em dashboards customizados.
 

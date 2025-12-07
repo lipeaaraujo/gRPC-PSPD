@@ -42,6 +42,7 @@ stub_transaction = manager_pb2_grpc.TransactionServiceStub(
     channel_server_transaction
 )
 
+GRPC_TIMEOUT = 5.0 
 
 @app.get('/')
 def index():
@@ -55,9 +56,11 @@ def creat_client(client: CreateClient):
             credit_limit = client.credit_limit
         )
 
-        grpc_response = stub_client.RegisterClient(grpc_request)
+        grpc_response = stub_client.RegisterClient(grpc_request, timeout=GRPC_TIMEOUT)
         return MessageToDict(grpc_response)
     except grpc.RpcError as e:
+        if e.code() == grpc.StatusCode.DEADLINE_EXCEEDED:
+            raise HTTPException(status_code=504, detail="Request timed out")
         raise HTTPException(status_code = 500, detail=f'Fail: {e.details()}')
 
 @app.get("/clients/{client_id}")
@@ -67,9 +70,11 @@ def get_client(client_id: str):
             id=client_id
         )
         
-        grpc_response = stub_client.ConsultClient(grpc_request)
+        grpc_response = stub_client.ConsultClient(grpc_request, timeout=GRPC_TIMEOUT)
         return MessageToDict(grpc_response)
     except grpc.RpcError as e:
+        if e.code() == grpc.StatusCode.DEADLINE_EXCEEDED:
+            raise HTTPException(status_code=504, detail="Request timed out")
         if e.code() == grpc.StatusCode.NOT_FOUND:
             raise HTTPException(status_code=404, detail="Client not found")
         raise HTTPException(status_code=500, detail=f'Fail: {e.details()}')
@@ -84,9 +89,11 @@ def perform_transaction(transaction: CreateTransaction):
             description= transaction.description
         )
 
-        grpc_reponse = stub_transaction.RequestTransaction(grpc_request)
+        grpc_reponse = stub_transaction.RequestTransaction(grpc_request, timeout=GRPC_TIMEOUT)
         return MessageToDict(grpc_reponse)
     except grpc.RpcError as e:
+        if e.code() == grpc.StatusCode.DEADLINE_EXCEEDED:
+            raise HTTPException(status_code=504, detail="Request timed out")
         raise HTTPException(status_code= 500, detail=f'Fail: {e.details()}')
 
 @app.get('/transactions/{client_id}')
@@ -97,13 +104,15 @@ def get_transactions(client_id: str):
         )
         
         transactions = []
-        grpc_response_stream = stub_transaction.ConsultTransaction(grpc_request)
+        grpc_response_stream = stub_transaction.ConsultTransaction(grpc_request, timeout=GRPC_TIMEOUT)
         
         for transaction in grpc_response_stream:
             transactions.append(MessageToDict(transaction))
             
         return {"transactions": transactions}
     except grpc.RpcError as e:
+        if e.code() == grpc.StatusCode.DEADLINE_EXCEEDED:
+            raise HTTPException(status_code=504, detail="Request timed out")
         if e.code() == grpc.StatusCode.NOT_FOUND:
             raise HTTPException(status_code=404, detail="Client not found or no transactions")
         raise HTTPException(status_code=500, detail=f'Fail: {e.details()}')
@@ -113,7 +122,7 @@ def get_extrato(client_id: str):
     try:
        
         client_request = manager_pb2.ConsultClientRequest(id=client_id)
-        client_response = stub_client.ConsultClient(client_request)
+        client_response = stub_client.ConsultClient(client_request, timeout=GRPC_TIMEOUT)
         client_data = MessageToDict(client_response)
         
        
@@ -121,7 +130,7 @@ def get_extrato(client_id: str):
         transaction_request = manager_pb2.ConsultClientRequest(id=client_id)
         
         try:
-            grpc_response_stream = stub_transaction.ConsultTransaction(transaction_request)
+            grpc_response_stream = stub_transaction.ConsultTransaction(transaction_request, timeout=GRPC_TIMEOUT)
             for transaction in grpc_response_stream:
                 transactions.append(MessageToDict(transaction))
         except grpc.RpcError as transaction_error:
@@ -160,6 +169,8 @@ def get_extrato(client_id: str):
         return extrato
         
     except grpc.RpcError as e:
+        if e.code() == grpc.StatusCode.DEADLINE_EXCEEDED:
+            raise HTTPException(status_code=504, detail="Request timed out")
         if e.code() == grpc.StatusCode.NOT_FOUND:
             raise HTTPException(status_code=404, detail="Client not found")
         raise HTTPException(status_code=500, detail=f'Fail: {e.details()}')
