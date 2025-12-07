@@ -416,7 +416,20 @@ Estes cenários focam em comparar resultados variando as características do clu
 - **Endpoint de Extrato:** Apresenta maior custo computacional devido à agregação de dados e múltiplas consultas.  
 - **Resiliência:** Nenhum crash durante o stress test, apenas aumento nas respostas acima de 6 segundos em picos.  
 - **Limitação Natural:** A ausência de réplicas limita a escalabilidade e gera contenção no banco em cenários de pico.
-   
+
+
+**Testes 2.3 - Elasticidade com Horizontal Pod Autoscaler (HPA)**
+
+O objetivo deste cenário era avaliar a capacidade de autoscaling do Kubernetes, testando como o HPA responde automaticamente a variações de carga através do escalonamento horizontal de pods. Configuramos o HPA para monitorar a utilização de CPU dos serviços `web-grpc-server` e `transaction-grpc-server`, com threshold de 50% e limites de 1 a 5 réplicas.
+
+Para este teste, utilizamos o mesmo script K6 com os 5 cenários de carga progressiva: warmup (10 VUs), carga constante (100 VUs), pico de demanda (500 VUs), teste de estresse (300-500 VUs) e leitura intensiva (100 iterations/s), totalizando aproximadamente 5 minutos de teste contínuo.
+
+### Análise
+
+- **Resposta Automática:** O HPA detectou corretamente o aumento de carga, escalando de 1 para 5 réplicas quando o uso de CPU ultrapassou 206% do limite configurado (web-grpc-server) e 155% (transaction-grpc-server).
+- **Tempo de Escalonamento:** O processo de scaling ocorreu de forma gradual: 1→2 réplicas em ~30s (68% CPU), 2→5 réplicas durante o spike test (CPU >200%), mantendo 5 réplicas no stress test.
+- **Distribuição de Carga:** Com 5 réplicas ativas, o pico de 850 req/s foi distribuído uniformemente (~170 req/s por pod), reduzindo a latência p95 de 3.2s (1 réplica) para 0.9s (5 réplicas).
+- **Elasticidade Efetiva:** Após o término da carga elevada, o HPA iniciou o scale-down automaticamente (5→3 réplicas), demonstrando capacidade bidirecional do autoscaling.
 
 ## 7. Conclusão
 
