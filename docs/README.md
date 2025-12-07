@@ -1,5 +1,7 @@
 # Monitoramento/observabilidade de aplicações em clusters K8S
 
+- Vídeo: https://youtu.be/JEVjPYCO9_o
+
 **Disciplina:** FGA0244 - Programação para Sistemas Paralelos e Distribuídos<br>
 **Turma:** 02<br>
 **Data:** 07/12/2025<br>
