@@ -22,6 +22,13 @@ spec:
           image: lipeaaraujo/client-grpc-server
           ports:
             - containerPort: 4000
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
           env:
             - name: CLIENT_DB_URL
               value: "postgres://user:12345@db-client:5432/db_client"
@@ -41,6 +48,7 @@ spec:
     - name: client-grpc-server
       port: 4000
       targetPort: 4000
+
 ---
 # SERVICE: gRPC TRANSACTION
 apiVersion: apps/v1
@@ -66,6 +74,13 @@ spec:
           image: lipeaaraujo/transaction-grpc-server
           ports:
             - containerPort: 4001
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
           env:
             - name: TRANSACTION_DB_URL
               value: "postgres://user:12345@db-transaction:5432/db_transaction"
@@ -112,6 +127,13 @@ spec:
           image: lipeaaraujo/grpc-web-server
           ports:
             - containerPort: 8080
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
           env:
             - name: GRPC_TRANSACTION_URL
               value: "transaction-grpc-server:4001"
