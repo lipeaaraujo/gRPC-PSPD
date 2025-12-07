@@ -4,7 +4,7 @@
 
 Antes de iniciar os testes, verifique se os seguintes requisitos estão atendidos:
 
-- **K6 instalado** ([Documentação oficial](https://k6.io/docs/get-started/installation/))  
+- **K6 instalado** (![Documentação oficial](https://k6.io/docs/get-started/installation/))  
 - **Cluster Kubernetes ativo** 
 - **kubectl configurado** com acesso ao cluster  
 

@@ -19,8 +19,7 @@
 
 O presente relatório documenta o projeto de pesquisa desenvolvido no âmbito da disciplina de Programação para Sistemas Paralelos e Distribuídos. O trabalho tem como foco central a exploração de estratégias de monitoramento e observabilidade em aplicações distribuídas, utilizando o Kubernetes.
 
-A aplicação escolhida foi o sistema distribuído de transações financeiras implementado previamente na atividade extraclasse. O sistema é dividido em  
-(Breve descrição do trabalho grpc)
+A aplicação escolhida foi o sistema distribuído de transações financeiras implementado previamente na atividade extraclasse. O sistema é dividido em três serviços principais, o Client Server responsável pelo gerenciamento de clientes, o Transaction Server que realiza o processamento de transações, e o stub Web Servers sendo o gateway HTTP que expõe APIs REST.
 
 Este documento está organizado de forma a detalhar a descrever a experiência técnica de montagem da infraestrutura e apresentar os resultados obtidos nos testes comparativos e posteriormente descrever as conclusões obtidas a partir do experimento.
 
@@ -35,7 +34,9 @@ sobre os encontros realizados e o que ficou resolvido em cada encontro) -->
 | ---- | ----------------- |
 | 01/12 | Os integrantes se reuniram para baixar as ferramentas a serem utilizadas e definir a estrátegia de desenvolvimento do trabalho. |
 | 02/12 | Começamos a escrever a estrutura base do relatório, definindo os principais tópicos. |
-| 03/12 | Criação do cluster kubernetes e nós utilizando o kind |
+| 03/12 | Criação do cluster kubernetes, utilizando o kind; configuração do Kubernets Dashboard, interface para monitoramento web das métricas; estudo e instalação do Prometheus e Grafana |
+| 05/12 | Implementação das métricas na API; criação dos scripts de testes de carga; criação dos cenários |
+| 06/12 | Conexão da aplicação com o Prometheus para coletar as métricas; realização dos testes |
 
 
 ## 3. Montagem do cluster Kubernetes
@@ -73,6 +74,11 @@ db-transaction-xxxxxx      1/1     Running   0          2m3s
 client-grpc-server-xxxxxx  1/1     Running   0          2m3s
 transaction-grpc-server-xxxxxx 1/1     Running   0          2m3s
 web-grpc-server-xxxxxx     1/1     Running   0          2m3s
+```
+Para acesso da aplicação via localhost, utilizamos o port-forward do serviço `web-grpc-server` para a porta `8080`:
+
+```bash
+kubectl port-forward svc/web-grpc-server 8080:8080
 ```
 
 ### Interface de Monitoramento Web
@@ -310,6 +316,8 @@ as conclusões -->
 
 Para os testes de carga, utilizamos a ferramenta [K6](https://k6.io/), que é uma ferramenta de código aberto para testes de carga e desempenho. Ela permite simular múltiplos usuários virtuais (VUs) realizando requisições à aplicação, possibilitando a avaliação do desempenho sob diferentes cargas de trabalho.
 
+> Observação: O guia para instalação e configuração da ferramenta está no arquivo ![Guia para Executar Testes com K6](tests/README.md).
+
 Com ela criamos um script de teste em JavaScript (`k6_test.js`) que simula uma série de operações típicas realizadas pelos usuários da aplicação, incluindo o registro de clientes, a realização de transações e a consulta de extratos. O script também coleta métricas importantes como tempo de resposta, taxa de erros e throughput.
 
 No script definimos 5 fluxos de testes diferentes, cada um com diferentes níveis de carga (número de usuários virtuais e duração do teste), tivemos que realizar vários testes para definir os valores ideais para cada fluxo de forma que fossem representativos do comportamento da aplicação sob diferentes condições de carga e que pudessem retratar os limites da aplicação. Os fluxos definidos foram:
@@ -319,39 +327,28 @@ No script definimos 5 fluxos de testes diferentes, cada um com diferentes nívei
 - Fluxo 4: estresse (aumento gradativo de 20 a 80 VUs por 300 segundos) para identificar os limites da aplicação.
 - Fluxo 5: carga de leitura intensiva (20 VUs pré-alocadas e 50 VUs máximas por 60 segundos) focando em consultas de extrato.
 
-### Definição da configuração base
+### Configuração base
 
-### 6.1 Cenários de testes
+A infrastrutura base utilizada para os testes consistiu em um cluster contendo 1 master node e 2 worker nodes. Cada módulo da aplicação (Client Service, Transaction Service e Web API Gateway) foi implantado em pods separados, com uma única réplica de cada serviço e sem escalonamento automático habilitado.
 
-## Plano de Cenários de Teste para Observabilidade e Desempenho
+### Cenários de testes
 
-Este plano detalha os cenários de teste de carga e variação de configuração do cluster Kubernetes (K8S) para o projeto de monitoramento e observabilidade.
+**Cenário Base (Baseline)**
 
-### 1. Definição do Cenário Base (Baseline)
+Este cenário estabelece o desempenho inicial da aplicação na configuração mais simples, servindo como referência para todas as comparações de teste. Ele foi feito instanciando a aplicação na configuração base descrita acima, executando os testes de carga com a ferramenta k6 com o objetivo de medir:
 
-Este cenário estabelece o desempenho inicial da aplicação na configuração mais simples, servindo como referência para todas as comparações de teste.
+1. O **tempo médio de resposta** por requisição;  
+2. A **quantidade máxima de requisições processadas por segundo** . 
 
-#### 1.1. Configuração da Aplicação e Cluster
-* **Aplicação:** Arquitetura de microsserviços gRPC composta por três módulos:
-    * **P:** WEB API (*API Gateway* - Ponto de entrada).
-    * **A:** gRPC Server (ClientService).
-    * **B:** gRPC Server (TransactionService).
-* **Configuração de Réplicas:** Uma única instância (`replicas: 1`) de cada módulo (P, A e B).
-* **Distribuição:** Cada módulo em um *Pod* separado e instanciado no cluster K8S.
-* **Cluster K8S:** Estrutura mínima de cluster: 1 Master Node e pelo menos 2 Worker Nodes (WNs).
-* **Serviços/Bancos de Dados:** *Services* e *Deployments* para `db-client` e `db-transaction` configurados.
+Após a execução dos testes, coletamos os seguintes resultados de utilização de CPU:
 
-#### 1.2. Teste de Carga e Métricas
-* **Ferramenta de Carga:** k6 (ou outra ferramenta de teste de carga).
-* **Carga:** Carga de trabalho leve a moderada (Ex: 5 a 10 Usuários Virtuais - VUs por 60 segundos).
-* **Ações Inclusas:** Uma sequência de operações que exercita os 4 tipos de comunicação gRPC (ex: **Unary** para registro/consulta, **Server Streaming** para extrato).
-* **Métricas a Coletar (k6):**
-    * Tempo médio de resposta (`http_req_duration` avg).
-    * Máxima quantidade de requisições por segundo (`http_reqs/s` max).
-    * Latência no percentil 95 (p95).
-* **Ferramenta de Monitoramento:** Prometheus, para observação inicial do ambiente.
+![grafico-pods-cpu](assets/base-case-cpu.png)
 
-### 2. Cenários de Variação (Otimização e Elasticidade)
+Os seguintes resultados de tempo de resposta e throughput:
+
+![grafico-base-case](assets/base-case-requests.png)
+
+### Cenários de Variação (Otimização e Elasticidade)
 
 Estes cenários focam em comparar resultados variando as características do cluster K8S e da aplicação para otimizar desempenho e elasticidade.
 
@@ -400,25 +397,10 @@ Estes cenários focam em comparar resultados variando as características do clu
 * **Foco:** Latência e *throughput* em função da capacidade total de processamento do cluster K8S.
 
 ### 6.2 Relatos dos testes
+* **Testes 2.1** - O objetivo desse cenário de testes era estressar a aplicação para descobrir os limites que permitiriam que obtivessemos o melhor proveito nos cenários restantes. Identificamos que 500 VU eram bons para iniciar os cenarios de teste, e que uma progressão gradual em direção a 1000 usuário era o suficiente para colocar o sistema sob estresse. Um dos principais pontos de dificuldade identificado foi o webSere, que consumiu todo o espaço de CPU destinado a ele na configuração básica.
 
-### 6.2.1 Testes de Carga — Configuração Base 
+![imagem grafica](assets/grafico-21.png) 
 
-Nessa etapa de teste  foi definir uma **configuração base** para a aplicação distribuída baseada em **gRPC**, executando testes de carga que permitissem identificar:
-
-1. O **tempo médio de resposta** por requisição;  
-2. A **quantidade máxima de requisições processadas por segundo** .  
-
-### 6.2.2  Metodologia de Teste
-
-A ferramenta **K6** foi utilizada para simular as cargas de requisições. Foram aplicados cinco cenários de teste, incluindo warm-up, carga constante, picos (“spike”), stress progressivo e cenário de leitura intensiva.  
-
-**Métricas principais observadas:**
-- Tempo de resposta (média, percentis P95/P99)  
-- Throughput (requisições por segundo)  
-- Taxa de falha e sucesso  
-- Métricas específicas por endpoint (clientes, transações, extratos)  
-
-### 6.2.3 Resultados Obtidos
 
 ### Métricas Gerais
 
@@ -430,15 +412,6 @@ A ferramenta **K6** foi utilizada para simular as cargas de requisições. Foram
 | Taxa de sucesso | 99,6% |
 | Duração total dos testes | 7min 30s |
 
-### Desempenho por Endpoint (P95)
-
-| Operação | P95 | Situação |
-|-----------|-----|----------|
-| Criação de cliente | 283,99 ms | ✅ Aprovado |
-| Criação de transação | 287,15 ms | ✅ Aprovado |
-| Consulta de extrato | 862,70 ms | ✅ Aprovado  |
-
-**Ponto de Saturação:** Entre **60 e 80 usuários virtuais simultâneos (VUs)** observou-se aumento expressivo nas latências (P99 > 5s), identificando o limite da configuração base.
 
 ### Análise
 
@@ -448,14 +421,12 @@ A ferramenta **K6** foi utilizada para simular as cargas de requisições. Foram
 - **Limitação Natural:** A ausência de réplicas limita a escalabilidade e gera contenção no banco em cenários de pico.
    
 
-
-### 6.3 Resultados Obtidos
-
-
-
 ## 7. Conclusão
 
-<!-- Conclusão – texto conclusivo em função da experiência realizada, comentários sobre dificuldades e soluções encontradas. Ao final, cada membro do grupo abre uma subseção para comentários pessoais sobre a pesquisa, indicando as partes que maistrabalhou, aprendizados e uma nota de autoavaliação. -->
+<!-- Conclusão – texto conclusivo em função da experiência realizada, comentários sobre dificuldades e soluções encontradas. Ao final, cada membro do grupo abre uma subseção para comentários pessoais sobre a pesquisa, indicando as partes que mais trabalhou, aprendizados e uma nota de autoavaliação. -->
+### 
+### Dificuldades
+* Uma das maiores dificuldades encontradas foi a formatação de Dashboards adequadas as informações que desejávemos extrair. Encontramos diversos problemas, como o acumulo do valor de váriaveis e dissincronização da monitoração do web-Server. A pouca documentação oficial tornou díficil encontrar informações que nos auxiliassem no desenvolvimento do sistema.
 
 ### Tabela de Contribuição
 

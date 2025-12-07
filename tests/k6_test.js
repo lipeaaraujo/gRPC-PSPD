@@ -23,30 +23,30 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '30s', target: 5 },  
+        { duration: '15s', target: 10 },  
       ],
-      gracefulRampDown: '10s',
+      gracefulRampDown: '5s',
       exec: 'warmupScenario',
     },
   //cenario 2
 
     constant_load: {
       executor: 'constant-vus',
-      vus: 500,
-      duration: '2m',
-      startTime: '1m', 
+      vus: 100,
+      duration: '1m',
+      startTime: '15s', 
       exec: 'mainScenario',
     },
     //cenario 2
 
     spike_test: {
       executor: 'ramping-vus',
-      startTime: '3m',
+      startTime: '1m15s',
       startVUs: 0,
       stages: [
-        { duration: '10s', target: 1000 }, 
-        { duration: '30s', target: 2000 },  
-        { duration: '10s', target: 0 },   
+        { duration: '15s', target: 100 }, 
+        { duration: '30s', target: 500 },  
+        { duration: '30s', target: 100 },   
       ],
       gracefulRampDown: '5s',
       exec: 'spikeScenario',
@@ -55,13 +55,11 @@ export const options = {
     // Cenario 4
     stress_test: {
       executor: 'ramping-vus',
-      startTime: '4m',
+      startTime: '2m30s',
       startVUs: 0,
       stages: [
+        { duration: '30s', target: 300 },
         { duration: '30s', target: 500 },
-        { duration: '30s', target: 1000 },
-        { duration: '30s', target: 1500 },
-        { duration: '30s', target: 2000 },
         { duration: '30s', target: 0 },
       ],
       gracefulRampDown: '10s',
@@ -73,9 +71,9 @@ export const options = {
       rate: 100, 
       timeUnit: '1s',
       duration: '1m',
-      preAllocatedVUs: 100,
-      maxVUs: 200,
-      startTime: '6m30s',
+      preAllocatedVUs: 50,
+      maxVUs: 100,
+      startTime: '4m',
       exec: 'readHeavyScenario',
     },
   },
@@ -94,7 +92,7 @@ export const options = {
   },
 };
 
-const BASE_URL = 'http://localhost:8080'    // para roda localmente tem que alterar para o 'http://localhost:8080'                    // para roda localmente tem que alterar para o 'http://localhost:8080'; 
+const BASE_URL = 'http://web-grpc-server:8080'    // para roda localmente tem que alterar para o 'http://localhost:8080'                    // para roda localmente tem que alterar para o 'http://localhost:8080'; 
 
 
 let clientPool = [];
