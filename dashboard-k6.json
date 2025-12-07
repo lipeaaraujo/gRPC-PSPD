@@ -509,7 +509,7 @@
           "expr": "http_requests_total{handler=~\"/clients.*\", status!=\"2xx\"}",
           "hide": false,
           "instant": false,
-          "legendFormat": "ERROR",
+          "legendFormat": "ERROR {{method}} {{handler}}",
           "range": true,
           "refId": "B"
         }
@@ -614,7 +614,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(http_requests_total{handler=~\"/clients.*\", status!=\"2xx\"})",
+          "expr": "http_requests_total{handler=~\"/(transactions|extrato).*\", status!=\"2xx\"}",
           "hide": false,
           "instant": false,
           "legendFormat": "ERROR {{method}} {{handler}}",
@@ -779,7 +779,32 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  " POST /transactions"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": true,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 9,
@@ -1225,18 +1250,19 @@
     }
   ],
   "preload": false,
+  "refresh": "5s",
   "schemaVersion": 42,
   "tags": [],
   "templating": {
     "list": []
   },
   "time": {
-    "from": "2025-12-07T02:28:53.219Z",
-    "to": "2025-12-07T03:15:57.357Z"
+    "from": "now-1h",
+    "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "PSPD - Trabalho",
   "uid": "ad24gmm",
-  "version": 35
+  "version": 6
 }
