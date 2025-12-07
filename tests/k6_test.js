@@ -95,7 +95,8 @@ export const options = {
   },
 };
 
-const BASE_URL = 'http://localhost:8080'; 
+const BASE_URL = 'http://web-grpc-server:8080'    // para roda localmente tem que alterar para o 'http://localhost:8080'                    // para roda localmente tem que alterar para o 'http://localhost:8080'; 
+
 
 let clientPool = [];
 

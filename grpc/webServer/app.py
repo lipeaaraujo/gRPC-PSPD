@@ -2,6 +2,7 @@ import grpc
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from prometheus_fastapi_instrumentator import Instrumentator
 import os
 
 import manager_pb2
@@ -27,6 +28,8 @@ app = FastAPI(
     version= "1.0.0"
 )
 
+Instrumentator().instrument(app).expose(app)
+
 channel_server_client = grpc.insecure_channel(
     os.getenv("GRPC_CLIENT_URL")
 )
@@ -38,6 +41,7 @@ stub_client = manager_pb2_grpc.ClientServiceStub(channel_server_client)
 stub_transaction = manager_pb2_grpc.TransactionServiceStub(
     channel_server_transaction
 )
+
 
 @app.get('/')
 def index():

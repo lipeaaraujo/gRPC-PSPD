@@ -43,7 +43,10 @@ sobre os encontros realizados e o que ficou resolvido em cada encontro) -->
 
 ## 3. Montagem do cluster Kubernetes
 
-- Decidimos usar o kind. Escolhemos pela facilidade para criação de clusters utilizando essa ferramenta.
+> Observação: Deixamos todos os arquivos de configuração do Kubernetes na pasta `grpc/k8s/`. Portanto, todos os comandos de `kubectl apply -f <nome-do-arquivo>.yaml` devem ser executados a partir dessa pasta.
+
+No trabalho anterior, utilizamos o Minikube para criação do cluster Kubernetes. Porém, para esse trabalho decidimos utilizar o Kind (Kubernetes IN Docker), que é uma ferramenta para rodar clusters Kubernetes locais usando contêineres Docker como nós do cluster. Decidimos utilizar o Kind por sua facilidade de configuração e leveza, especialmente para ambientes de desenvolvimento e testes locais.
+
 - Criamos um arquivo `config.yaml` para definir o master e os worker nodes do nosso cluster com o kind. Inicialmente definimos 1 master node e 2 worker nodes. Para rodar, executar o comando `kind create cluster --name grpc --config config.yaml`. Para conferir rodar o comando `kind get clusters`, deve aparecer o cluster "grpc". Pode-se conferir os pods pelo comando `kubectl get pods -n kube-system`, e os nós criados com o comando `kubectl get nodes`. 
 - Reutilizamos os arquivos .yaml criados no último trabalho (`db-deployment.yaml` e `deployment.yaml`) para instanciação do volumes, deployments e services correspondentes dos bancos de dados, dos serviços gRPC e da nossa Web API Gateway. Eles foram criados inicialmente em conjunto com o minikube, porém não tivemos problemas em utilizá-los com o kind. O comando para aplicar os deployments é `kubectl apply -f <nome-do-arquivo>.yaml`. E para conferir podemos usar o `kubectl get pods -owide`, que também mostra a distribuição nos worker nodes.
 
@@ -134,9 +137,45 @@ Após isso conseguimos visualizar as métricas no Kubernetes Dashboard corretame
 ## 4. Monitoramento e observabilidade
 
 ### Prometheus e Grafana
+Utilizamos o prometheus em conjunto com o grafana para fazer o monitoramento do cluster.
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm install prometheus prometheus-community/kube-prometheus-stack
+```
+Após instalar o prometheus, devemos fazer um port forward para conseguirmos acessar o grafana. Utilizamos o seguinte comando:
+```bash
+kubectl port-forward svc/prometheus-grafana 3000:80
+```
+Para fazer login no grafana é necessário conseguir a senha de acesso, rodando o seguinte comando:
+```bash
+kubectl get secret --namespace default prometheus-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+```
+O 'user' é admin.
 
+Após a instânciação do Prometheus e do Grafana, criamos um `ServiceMonitor` para o Prometheus coletar as métricas do web server. O arquivo `service-monitor.yaml` é o seguinte:
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: web-grpc-server-monitor
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: web-grpc-server
+  endpoints:
+  - port: metrics
+    interval: 15s
+```
+Aplicamos o arquivo com o comando `kubectl apply -f service-monitor.yaml`.
 
 ## 5. Aplicação
+
+- Criamos endpoint para métricas usando bibliotecas do Prometheus no web server, e com isso tivemos que atualizar a imagem docker do web server e subir para o Docker Hub.
+- Criamos ServiceMonitor para o Prometheus coletar as métricas do web server
 
 ## 6. Testes feitos
 
@@ -231,6 +270,58 @@ Estes cenários focam em comparar resultados variando as características do clu
 
 ### 6.2 Relatos dos testes
 
+### 6.2.1 Testes de Carga — Configuração Base 
+
+Nessa etapa de teste  foi definir uma **configuração base** para a aplicação distribuída baseada em **gRPC**, executando testes de carga que permitissem identificar:
+
+1. O **tempo médio de resposta** por requisição;  
+2. A **quantidade máxima de requisições processadas por segundo** .  
+
+### 6.2.2  Metodologia de Teste
+
+A ferramenta **K6** foi utilizada para simular as cargas de requisições. Foram aplicados cinco cenários de teste, incluindo warm-up, carga constante, picos (“spike”), stress progressivo e cenário de leitura intensiva.  
+
+**Métricas principais observadas:**
+- Tempo de resposta (média, percentis P95/P99)  
+- Throughput (requisições por segundo)  
+- Taxa de falha e sucesso  
+- Métricas específicas por endpoint (clientes, transações, extratos)  
+
+### 6.2.3 Resultados Obtidos
+
+### Métricas Gerais
+
+| Indicador | Valor |
+|------------|--------|
+| Tempo médio de resposta (avg) | **144,43 ms** |
+| Mediana (P50) | 78,07 ms |
+| Throughput máximo | **124,03 req/s** |
+| Taxa de sucesso | 99,6% |
+| Duração total dos testes | 7min 30s |
+
+### Desempenho por Endpoint (P95)
+
+| Operação | P95 | Situação |
+|-----------|-----|----------|
+| Criação de cliente | 283,99 ms | ✅ Aprovado |
+| Criação de transação | 287,15 ms | ✅ Aprovado |
+| Consulta de extrato | 862,70 ms | ✅ Aprovado  |
+
+**Ponto de Saturação:** Entre **60 e 80 usuários virtuais simultâneos (VUs)** observou-se aumento expressivo nas latências (P99 > 5s), identificando o limite da configuração base.
+
+### Análise
+
+- **Desempenho Estável:** O sistema mantém latências baixas e throughput consistente até ~20 VUs.  
+- **Endpoint de Extrato:** Apresenta maior custo computacional devido à agregação de dados e múltiplas consultas.  
+- **Resiliência:** Nenhum crash durante o stress test, apenas aumento nas respostas acima de 6 segundos em picos.  
+- **Limitação Natural:** A ausência de réplicas limita a escalabilidade e gera contenção no banco em cenários de pico.
+   
+
+
+### 6.3 Resultados Obtidos
+
+
+
 ## 7. Conclusão
 
 <!-- Conclusão – texto conclusivo em função da experiência realizada, comentários sobre dificuldades e soluções encontradas. Ao final, cada membro do grupo abre uma subseção para comentários pessoais sobre a pesquisa, indicando as partes que maistrabalhou, aprendizados e uma nota de autoavaliação. -->
@@ -255,6 +346,7 @@ Estes cenários focam em comparar resultados variando as características do clu
 - https://howtodevez.medium.com/setting-up-kubernetes-dashboard-with-kind-ccd22fdd03e8
 - https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/
 - https://github.com/kubernetes-sigs/metrics-server?tab=readme-ov-file
+- https://www.youtube.com/watch?v=-k0VrvWaaOg
 
 ## Anexos
 
